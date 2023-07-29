@@ -36,7 +36,7 @@ async def homepage_documentation():
     return RedirectResponse(url='/docs')
 
 @app.get("/field-query")
-def query_ecs_field(field: Union[str, None] = None):
+def query_ecs_field(field: Union[str, None] = None, verbose: bool = False):
     """
     Perform a search in the 'ecs_schema' index using a simple query string.
 
@@ -48,6 +48,10 @@ def query_ecs_field(field: Union[str, None] = None):
         field (str, optional): The text to search for. If provided, the search will be 
         based on this value. If not provided (None), the search will return all 
         documents in the index. Defaults to None.
+
+        verbose (bool, optional): The results verbosity. If True, will return the full 
+        result from elasticsearch. If not provided or false, the search will return  
+        summarised documents in the index. Defaults to False.
 
     Returns:
         List[dict]: A list of JSON objects representing the search results. 
@@ -69,18 +73,25 @@ def query_ecs_field(field: Union[str, None] = None):
     query = {
         "query": {
             "simple_query_string": {  
-                "fields": ["Field.text", "Description", "Example"],          
+                "fields": ["Field.text", "Description", "Example", "Level"],          
                 "query":  field,
                 "analyze_wildcard": True
             }
         }
     }
-    result = es.search( index='ecs_schema', body=query)
-    if "hits" in result and "total" in result["hits"]:
-        if result["hits"]["total"]["value"] > 0:
-            return result["hits"]["hits"]
-        else:
-            result = []
-    else:
-        result = []
+    result = []
+    es_result = es.search( index='ecs_schema', body=query)
+    if "hits" in es_result and "total" in es_result["hits"]:
+        if es_result["hits"]["total"]["value"] > 0:
+            if verbose:
+                result = es_result["hits"]["hits"]
+            else:
+                for entry in es_result["hits"]["hits"]:
+                    data = {}
+                    data["score"] = entry["_score"]
+                    data["Field"] = entry["_source"]["Field"]
+                    data["Description"] = entry["_source"]["Description"]
+                    data["Field_Set"] = entry["_source"]["Field_Set"]
+                    data["Level"] = entry["_source"]["Level"]
+                    result.append(data)
     return result
