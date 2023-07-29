@@ -10,8 +10,8 @@ es = Elasticsearch("http://0.0.0.0:9200")
 def read_root():
     return {"Hello": "World"}
 
-@app.get("/field-validator")
-def verify_field(field: Union[str, None] = None):
+@app.get("/field-query")
+def query_ecs_field(field: Union[str, None] = None):
     query = {    
         "query": {
             "simple_query_string": {  
